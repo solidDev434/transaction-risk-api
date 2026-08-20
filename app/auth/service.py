@@ -1,0 +1,3 @@
+class AuthService:
+    @staticmethod
+    def 

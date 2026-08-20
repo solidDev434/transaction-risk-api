@@ -10,7 +10,7 @@ from .config import config
 
 async_engine = AsyncEngine(
     create_engine(
-        url=config.database_url,
+        url=config.DATABASE_URL,
         echo=True
     )
 )

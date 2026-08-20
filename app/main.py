@@ -5,6 +5,7 @@ from .database import init_db, async_engine
 from .config import config
 
 # Routers
+from .auth.router import router as auth_router
 
 
 @asynccontextmanager
@@ -18,7 +19,7 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(
     title="Transaction Risk API",
-    version=config.version,
+    version=config.VERSION,
     lifespan=lifespan
 )
 
@@ -26,3 +27,6 @@ app = FastAPI(
 @app.get("/health")
 async def read_health():
     return {"status": "healthy"}
+
+
+app.include_router(auth_router, prefix=f"/api/{config.VERSION}")
