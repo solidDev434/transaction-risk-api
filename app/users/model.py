@@ -30,4 +30,4 @@ class User(SQLModel, table=True):
         )
     )
 
-    wallet: Optional["Wallet"] = Relationship(back_populates="users")
+    wallet: Optional["Wallet"] = Relationship(back_populates="user")

@@ -20,13 +20,6 @@ class WalletRepo:
         return result.scalar_one_or_none()
 
     @staticmethod
-    async def create_wallet(session: AsyncSession, wallet: Wallet) -> Wallet:
-        session.add(wallet)
-        await session.commit()
-        await session.refresh(wallet)
-        return wallet
-
-    @staticmethod
     async def save(session: AsyncSession, wallet: Wallet) -> Wallet:
         session.add(wallet)
         await session.commit()
