@@ -9,6 +9,11 @@ class UserCreate(BaseModel):
     password: str = Field(..., min_length=8, max_length=100)
 
 
+class UserPasswordUpdate(BaseModel):
+    old_password: str = Field(..., min_length=8, max_length=100)
+    new_password: str = Field(..., min_length=8, max_length=100)
+
+
 class UserResponse(BaseModel):
     id: uuid.UUID
     email: str
