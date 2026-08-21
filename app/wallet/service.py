@@ -25,12 +25,12 @@ class WalletService:
         existing_wallet = await wallet_repo.get_wallet_by_user_id(session, user_id)
         if existing_wallet:
             raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
+                status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Wallet already exists for this user"
             )
 
         wallet = Wallet(user_id=user_id, available=100000, reserved=0)
-        return await wallet_repo.create_wallet(session, wallet)
+        session.add(wallet)
 
     @staticmethod
     async def reserve_funds(session: AsyncSession, user_id: UUID, amount: int) -> Wallet:
