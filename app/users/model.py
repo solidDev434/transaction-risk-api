@@ -2,10 +2,11 @@ import uuid
 from datetime import datetime
 from sqlalchemy import Column, DateTime, func
 from sqlmodel import SQLModel, Field, Relationship
-from typing import Optional, TYPE_CHECKING
+from typing import Optional, TYPE_CHECKING, List
 
 if TYPE_CHECKING:
     from app.wallet.model import Wallet
+    from app.transactions.model import Transaction
 
 
 class User(SQLModel, table=True):
@@ -31,3 +32,4 @@ class User(SQLModel, table=True):
     )
 
     wallet: Optional["Wallet"] = Relationship(back_populates="user")
+    transactions: List["Transaction"] = Relationship(back_populates="user")
