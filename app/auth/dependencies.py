@@ -13,7 +13,6 @@ from .config import auth_config
 from app.database import get_session
 from app.users.model import User
 from .schema import TokenData
-from app.cache.redis_client import redis_client
 from app.cache.cache import CacheService, get_cache
 from .utils import verify_access_token
 
@@ -60,13 +59,11 @@ async def get_current_user(
     )
 
     # check blacklist
-    client = redis_client.get_client()
-    if client:
-        claims = verify_access_token(token)
-        is_blacklisted = await cache.get(f"bl:{claims.get('jti', token)}")
-        if is_blacklisted:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED, detail="Token revoked")
+    claims = verify_access_token(token)
+    is_blacklisted = await cache.get(f"bl:{claims.get('jti', token)}")
+    if is_blacklisted:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="Token revoked")
 
     try:
         payload = jwt.decode(token, auth_config.JWT_SECRET,
