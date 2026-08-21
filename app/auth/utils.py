@@ -17,6 +17,7 @@ async def blacklist_token(
 ) -> None:
     """Blacklist a token by it's jti until its natural expiry"""
     ttl = exp - int(datetime.utcnow().timestamp())
+    print(ttl, f"{prefix}:{jti}")
     if ttl > 0:
         await cache.set(f"{prefix}:{jti}", "1", ttl=ttl)
 

@@ -14,6 +14,8 @@ from app.database import get_session
 from app.users.model import User
 from .schema import TokenData
 from app.cache.redis_client import redis_client
+from app.cache.cache import CacheService, get_cache
+from .utils import verify_access_token
 
 password_hash = PasswordHash.recommended()
 oauth2_scheme = OAuth2PasswordBearer(
@@ -48,7 +50,8 @@ def create_refresh_token(data: dict, expires_delta: Optional[timedelta] = None) 
 
 async def get_current_user(
     token: str = Depends(oauth2_scheme),
-    db: AsyncSession = Depends(get_session)
+    db: AsyncSession = Depends(get_session),
+    cache: CacheService = Depends(get_cache),
 ) -> User:
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
@@ -59,7 +62,8 @@ async def get_current_user(
     # check blacklist
     client = redis_client.get_client()
     if client:
-        is_blacklisted = await client.get(f"bl:access:{token}")
+        claims = verify_access_token(token)
+        is_blacklisted = await cache.get(f"bl:{claims.get('jti', token)}")
         if is_blacklisted:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED, detail="Token revoked")
