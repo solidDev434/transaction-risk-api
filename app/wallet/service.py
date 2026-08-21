@@ -5,6 +5,7 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 
 from .model import Wallet
 from .repo import wallet_repo
+from .utils import to_cent
 
 logger = logging.getLogger(__name__)
 
@@ -29,7 +30,7 @@ class WalletService:
                 detail="Wallet already exists for this user"
             )
 
-        wallet = Wallet(user_id=user_id, available=100000, reserved=0)
+        wallet = Wallet(user_id=user_id, available=to_cent(1000), reserved=0)
         session.add(wallet)
 
     @staticmethod
