@@ -15,7 +15,7 @@ class Wallet(SQLModel, table=True):
     user_id: uuid.UUID = Field(foreign_key="users.id", index=True, unique=True)
 
     available: int = Field(default=0, ge=0)  # Stored in cents
-    reserved: int = Field(default=0, ge=0)
+    reserved: int = Field(default=0, ge=0)  # Stored in cents
 
     created_at: datetime = Field(
         sa_column=Column(
