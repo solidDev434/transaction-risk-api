@@ -15,12 +15,6 @@ from .schema import TransactionResponse
 router = APIRouter(prefix="/transactions", tags=["Transactions"])
 
 
-@router.post("/create")
-async def create_transaction():
-    print("PROCESSING")
-    return {"message": "DONE"}
-
-
 @router.get("/", response_model=PaginatedResponse)
 async def get_transactions(
     page: int = Query(1, ge=1),
