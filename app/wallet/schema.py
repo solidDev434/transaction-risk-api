@@ -4,7 +4,6 @@ from pydantic import BaseModel, Field
 
 class WalletRead(BaseModel):
     id: UUID
-    user_id: UUID
     available: int              # in cents
     reserved: int               # in cents
     available_display: str      # "$200.32"
