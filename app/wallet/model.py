@@ -5,16 +5,18 @@ from sqlmodel import SQLModel, Field, Relationship
 from typing import Optional, TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from app.wallet.model import Wallet
+    from app.users.model import User
 
 
-class User(SQLModel, table=True):
-    __tablename__ = "users"
+class Wallet(SQLModel, table=True):
+    __tablename__ = "wallet"
 
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
-    name: str = Field(max_length=50)
-    email: str = Field(unique=True, index=True)
-    hashed_password: str = Field(max_length=100)
+    user_id: uuid.UUID = Field(foreign_key="users.id", index=True, unique=True)
+
+    available: int = Field(default=0, ge=0)  # Stored in cents
+    reserved: int = Field(default=0, ge=0)  # Stored in cents
+
     created_at: datetime = Field(
         sa_column=Column(
             DateTime(timezone=True),
@@ -30,4 +32,4 @@ class User(SQLModel, table=True):
         )
     )
 
-    wallet: Optional["Wallet"] = Relationship(back_populates="user")
+    user: Optional["User"] = Relationship(back_populates="wallet")
