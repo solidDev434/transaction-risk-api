@@ -5,13 +5,20 @@ from sqlmodel import SQLModel, Field, JSON, Column, DateTime, func, Relationship
 from typing import Optional, TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from app.users.model import User
+    from app.wallet.model import Wallet
 
 
 class TransactionStatus(str, Enum):
     PENDING = "pending"
-    SUCCESS = "success"
-    FAILED = "failed"
+    FLAGGED = "flagged"
+    CLEARED = "CLEARED"
+    REJECTED = "REJECTED"
+
+
+class TransactionType(str, Enum):
+    TRANSFER = "transfer"
+    DEPOSIT = "deposit"
+    WITHDRAWAL = "withdrawal"
 
 
 # class Transaction(SQLModel, table=True):
@@ -35,10 +42,22 @@ class Transaction(SQLModel, table=True):
     __tablename__ = "transactions"
 
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
-    user_id: uuid.UUID = Field(foreign_key="users.id", index=True)
+
+    sender_wallet_id: Optional[uuid.UUID] = Field(
+        default=None,
+        foreign_key="wallet.id",
+        index=True
+    )
+    receiver_wallet_id: Optional[uuid.UUID] = Field(
+        default=None,
+        foreign_key="wallet.id",
+        index=True
+    )
 
     amount: int = Field(default=0, ge=0)        # stored in cents
+    type: TransactionType = Field(default=TransactionType.TRANSFER)
     status: TransactionStatus = Field(default=TransactionStatus.PENDING)
+
     created_at: datetime = Field(
         sa_column=Column(
             DateTime(timezone=True),
@@ -50,8 +69,9 @@ class Transaction(SQLModel, table=True):
         sa_column=Column(
             DateTime(timezone=True),
             server_default=func.now(),
+            onupdate=func.now(),
             nullable=True
         )
     )
 
-    user: Optional["User"] = Relationship(back_populates="transactions")
+    user: Optional["Wallet"] = Relationship(back_populates="transactions")

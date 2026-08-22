@@ -24,10 +24,14 @@ class TransactionService:
             status
         )
 
+        response_items = [
+            TransactionResponse.model_validate(item) for item in items
+        ]
+
         pages = ceil(total / pagination.limit) if pagination.limit else 0
 
         return PaginatedResponse(
-            items=items,
+            items=response_items,
             total=total,
             page=pagination.page,
             limit=pagination.limit,
