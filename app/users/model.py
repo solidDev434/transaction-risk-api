@@ -2,7 +2,7 @@ import uuid
 from datetime import datetime
 from sqlalchemy import Column, DateTime, func
 from sqlmodel import SQLModel, Field, Relationship
-from typing import Optional, TYPE_CHECKING, List
+from typing import Optional, TYPE_CHECKING
 
 if TYPE_CHECKING:
     from app.wallet.model import Wallet
@@ -26,6 +26,7 @@ class User(SQLModel, table=True):
         sa_column=Column(
             DateTime(timezone=True),
             server_default=func.now(),
+            onupdate=func.now(),
             nullable=True
         )
     )

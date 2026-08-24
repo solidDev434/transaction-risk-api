@@ -34,4 +34,12 @@ class Wallet(SQLModel, table=True):
     )
 
     user: Optional["User"] = Relationship(back_populates="wallet")
-    transactions: List["Transaction"] = Relationship(back_populates="wallet")
+    sent_transactions: List["Transaction"] = Relationship(
+        back_populates="sender_wallet",
+        sa_relationship_kwargs={"foreign_keys": "Transaction.sender_wallet_id"}
+    )
+    received_transactions: List["Transaction"] = Relationship(
+        back_populates="receiver_wallet",
+        sa_relationship_kwargs={
+            "foreign_keys": "Transaction.receiver_wallet_id"}
+    )
