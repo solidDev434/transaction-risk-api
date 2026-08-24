@@ -28,6 +28,7 @@ class Wallet(SQLModel, table=True):
     updated_at: datetime = Field(
         sa_column=Column(
             DateTime(timezone=True),
+            onupdate=func.now(),
             server_default=func.now(),
             nullable=True
         )
