@@ -3,7 +3,7 @@ from sqlmodel import select, func, and_
 from sqlmodel.ext.asyncio.session import AsyncSession
 from typing import List, Optional, Tuple
 
-from .model import Transaction, TransactionStatus
+from .model import Transaction, TransactionStatus, IdempotencyKey
 from app.common.pagination import PaginationParams
 
 
@@ -56,6 +56,17 @@ class TransactionRepo:
             and_(
                 Transaction.id == transaction_id,
                 Transaction.user_id == user_id
+            )
+        )
+        result = await session.execute(statement)
+        return result.scalar_one_or_none()
+
+    @staticmethod
+    async def get_idempotency_key(session: AsyncSession, key: UUID, user_id: UUID) -> Optional[IdempotencyKey]:
+        statement = select(IdempotencyKey).where(
+            and_(
+                IdempotencyKey.idempotency_key == key,
+                IdempotencyKey.user_id == user_id
             )
         )
         result = await session.execute(statement)

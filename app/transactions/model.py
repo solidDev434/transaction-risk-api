@@ -6,6 +6,7 @@ from typing import Optional, TYPE_CHECKING
 
 if TYPE_CHECKING:
     from app.wallet.model import Wallet
+    from app.users.model import User
 
 
 class TransactionStatus(str, Enum):
@@ -21,22 +22,14 @@ class TransactionType(str, Enum):
     WITHDRAWAL = "withdrawal"
 
 
-# class Transaction(SQLModel, table=True):
-#     __tablename__ = "Transactions"
+class RecoveryPoint(str, Enum):
+    STARTED = "started"
+    FUNDS_RESERVED = "funds_reserved"
+    OUTBOX_WRITTEN = "outbox_written"
+    PROVIDER_CALLED = "provider_called"
+    COMPLETED = "completed"
+    FAILED = "failed"
 
-    # id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
-    # user_id: uuid.UUID = Field(foreign_key="users.id", index=True, unique=True)
-
-#     payload: Optional[dict] = Field(sa_column=Column(JSON))
-#     status: TransactionStatus = Field(default=TransactionStatus.PENDING)
-#     attempts: int = Field(default=0, ge=0)
-    # locked_at: datetime = Field(
-    #     sa_column=Column(
-    #         DateTime(timezone=True),
-    #         server_default=func.now(),
-    #         nullable=True
-    #     )
-    # )
 
 class Transaction(SQLModel, table=True):
     __tablename__ = "transactions"
@@ -84,3 +77,48 @@ class Transaction(SQLModel, table=True):
         sa_relationship_kwargs={
             "foreign_keys": "[Transaction.receiver_wallet_id]"}
     )
+
+
+# class TransactionOutbox(SQLModel, table=True):
+#     __tablename__ = "transaction_outbox"
+
+#     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
+#     user_id: uuid.UUID = Field(foreign_key="users.id", index=True, unique=True)
+
+#     payload: Optional[dict] = Field(sa_column=Column(JSON))
+#     status: TransactionStatus = Field(default=TransactionStatus.PENDING)
+#     attempts: int = Field(default=0, ge=0)
+#     locked_at: datetime = Field(
+#         sa_column=Column(
+#             DateTime(timezone=True),
+#             server_default=func.now(),
+#             nullable=True
+#         )
+#     )
+
+class IdempotencyKey(SQLModel, table=True):
+    __tablename__ = "idempotency_keys"
+
+    id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
+    user_id: uuid.UUID = Field(
+        index=True,
+        foreign_key="users.id",
+        unique=True
+    )
+    idempotency_key: str = Field(index=True, unique=True, max_length=100)
+    recovery_point: RecoveryPoint = Field(default=RecoveryPoint.STARTED)
+
+    request_params: dict | None = Field(default=None, sa_column=Column(JSON))
+    response_code: int | None = None
+    response_body: dict | None = Field(default=None, sa_column=Column(JSON))
+
+    locked_at: datetime | None = None
+    created_at: datetime = Field(
+        sa_column=Column(
+            DateTime(timezone=True),
+            server_default=func.now(),
+            nullable=True
+        )
+    )
+
+    user: Optional["User"] = Relationship(back_populates="idempotency_keys")

@@ -14,3 +14,19 @@ class TransactionResponse(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+class TransferTransaction(BaseModel):
+    sender_wallet_id: UUID
+    receiver_wallet_id: UUID
+    amount: float
+
+
+class WithdrawalTransaction(BaseModel):
+    sender_wallet_id: UUID
+    amount: float
+
+
+class DebitTransaction(BaseModel):
+    receiver_wallet_id: UUID
+    amount: float

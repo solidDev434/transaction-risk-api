@@ -60,5 +60,26 @@ class TransactionService:
 
         return transaction
 
+    @staticmethod
+    async def initiate_transactions(
+        session: AsyncSession,
+        idempotency_key: UUID,
+        user_id: UUID
+    ):
+        # Idempotency check + lock
+        existing_key = await transaction_repo.get_idempotency_key(
+            session,
+            idempotency_key,
+            user_id
+        )
+        if existing_key:
+            return existing_key.response_body
+
+        # Reserve funds (calls wallet_service.reserve funds)
+        # Create pending transaction
+        # Write to outbox
+        # Update recovery point
+        print("Initiate Transaction")
+
 
 transaction_service = TransactionService()

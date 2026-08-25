@@ -6,6 +6,7 @@ from typing import Optional, TYPE_CHECKING
 
 if TYPE_CHECKING:
     from app.wallet.model import Wallet
+    from app.transactions.model import IdempotencyKey
 
 
 class User(SQLModel, table=True):
@@ -32,3 +33,5 @@ class User(SQLModel, table=True):
     )
 
     wallet: Optional["Wallet"] = Relationship(back_populates="user")
+    idempotency_key: Optional["IdempotencyKey"] = Relationship(
+        back_populates="user")
