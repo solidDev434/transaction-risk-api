@@ -33,5 +33,6 @@ class User(SQLModel, table=True):
     )
 
     wallet: Optional["Wallet"] = Relationship(back_populates="user")
-    idempotency_key: Optional["IdempotencyKey"] = Relationship(
-        back_populates="user")
+    idempotency_keys: list["IdempotencyKey"] = Relationship(
+        back_populates="user"
+    )

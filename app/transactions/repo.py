@@ -1,9 +1,10 @@
 from uuid import UUID
-from sqlmodel import select, func, and_
+from sqlmodel import select, func, and_, or_
 from sqlmodel.ext.asyncio.session import AsyncSession
 from typing import List, Optional, Tuple
 
-from .model import Transaction, TransactionStatus, IdempotencyKey
+from app.wallet.model import Wallet
+from .model import Transaction, TransactionStatus, IdempotencyKey, RecoveryPoint
 from app.common.pagination import PaginationParams
 
 
@@ -15,19 +16,21 @@ class TransactionRepo:
         pagination: PaginationParams,
         status: TransactionStatus
     ) -> Tuple[List[Transaction], int]:
-        statement = select(Transaction).where(Transaction.user_id == user_id)
+        statement = (
+            select(Transaction)
+            .join(Wallet, or_(Transaction.sender_wallet_id == Wallet.id, Transaction.receiver_wallet_id == Wallet.id))
+            .where(Wallet.user_id == user_id)
+            .distinct()
+        )
 
-        # Filter by status if it was provided
         if status is not None:
             statement = statement.where(Transaction.status == status)
 
-        # Count Total items
         count_statement = select(
             func.count()).select_from(statement.subquery())
         total_result = await session.execute(count_statement)
         total = total_result.scalar_one()
 
-        # Apply ordering + pagination
         statement = (
             statement
             .order_by(Transaction.created_at.desc())
@@ -37,7 +40,6 @@ class TransactionRepo:
 
         result = await session.execute(statement)
         items = result.scalars().all()
-
         return items, total
 
     @staticmethod
@@ -52,17 +54,22 @@ class TransactionRepo:
         user_id: UUID,
         transaction_id: UUID
     ) -> Optional[Transaction]:
-        statement = select(Transaction).where(
-            and_(
-                Transaction.id == transaction_id,
-                Transaction.user_id == user_id
+        statement = (
+            select(Transaction)
+            .join(Wallet, or_(Transaction.sender_wallet_id == Wallet.id, Transaction.receiver_wallet_id == Wallet.id))
+            .where(
+                and_(
+                    Transaction.id == transaction_id,
+                    Wallet.user_id == user_id,
+                )
             )
+            .distinct()
         )
         result = await session.execute(statement)
         return result.scalar_one_or_none()
 
     @staticmethod
-    async def get_idempotency_key(session: AsyncSession, key: UUID, user_id: UUID) -> Optional[IdempotencyKey]:
+    async def get_idempotency_key(session: AsyncSession, key: str, user_id: UUID) -> Optional[IdempotencyKey]:
         statement = select(IdempotencyKey).where(
             and_(
                 IdempotencyKey.idempotency_key == key,
@@ -71,6 +78,27 @@ class TransactionRepo:
         )
         result = await session.execute(statement)
         return result.scalar_one_or_none()
+
+    @staticmethod
+    async def get_or_create_idempotency_key(
+        session: AsyncSession,
+        user_id: UUID,
+        idempotency_key: str,
+        request_params: dict | None = None,
+    ) -> IdempotencyKey:
+        existing_key = await TransactionRepo.get_idempotency_key(session, idempotency_key, user_id)
+        if existing_key:
+            return existing_key
+
+        key = IdempotencyKey(
+            user_id=user_id,
+            idempotency_key=idempotency_key,
+            request_params=request_params,
+            recovery_point=RecoveryPoint.STARTED,
+        )
+        session.add(key)
+        await session.flush()
+        return key
 
 
 transaction_repo = TransactionRepo()

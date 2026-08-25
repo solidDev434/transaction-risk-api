@@ -1,8 +1,9 @@
 from datetime import datetime
 from uuid import UUID
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
+from enum import Enum
 
-from .model import TransactionStatus
+from .model import TransactionStatus, TransactionType
 
 
 class TransactionResponse(BaseModel):
@@ -16,17 +17,27 @@ class TransactionResponse(BaseModel):
         from_attributes = True
 
 
+class TransactionCreate(BaseModel):
+    type: TransactionType
+    amount: float = Field(..., gt=0)
+    receiver_wallet_id: UUID | None = None
+
+
 class TransferTransaction(BaseModel):
-    sender_wallet_id: UUID
     receiver_wallet_id: UUID
-    amount: float
+    amount: float = Field(..., gt=0)
 
 
 class WithdrawalTransaction(BaseModel):
-    sender_wallet_id: UUID
-    amount: float
+    amount: float = Field(..., gt=0)
 
 
-class DebitTransaction(BaseModel):
+class DepositTransaction(BaseModel):
     receiver_wallet_id: UUID
-    amount: float
+    amount: float = Field(..., gt=0)
+
+
+class TransactionTypeRequest(str, Enum):
+    TRANSFER = "transfer"
+    WITHDRAWAL = "withdrawal"
+    DEPOSIT = "deposit"

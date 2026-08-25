@@ -79,22 +79,31 @@ class Transaction(SQLModel, table=True):
     )
 
 
-# class TransactionOutbox(SQLModel, table=True):
-#     __tablename__ = "transaction_outbox"
+class TransactionOutbox(SQLModel, table=True):
+    __tablename__ = "transaction_outbox"
 
-#     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
-#     user_id: uuid.UUID = Field(foreign_key="users.id", index=True, unique=True)
+    id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
+    event_type: str = Field(default="process_transaction",
+                            max_length=100, index=True)
+    payload: dict | None = Field(default=None, sa_column=Column(JSON))
+    status: str = Field(default="pending", max_length=50)
+    attempts: int = Field(default=0, ge=0)
+    created_at: datetime = Field(
+        sa_column=Column(
+            DateTime(timezone=True),
+            server_default=func.now(),
+            nullable=True
+        )
+    )
+    updated_at: datetime = Field(
+        sa_column=Column(
+            DateTime(timezone=True),
+            server_default=func.now(),
+            onupdate=func.now(),
+            nullable=True
+        )
+    )
 
-#     payload: Optional[dict] = Field(sa_column=Column(JSON))
-#     status: TransactionStatus = Field(default=TransactionStatus.PENDING)
-#     attempts: int = Field(default=0, ge=0)
-#     locked_at: datetime = Field(
-#         sa_column=Column(
-#             DateTime(timezone=True),
-#             server_default=func.now(),
-#             nullable=True
-#         )
-#     )
 
 class IdempotencyKey(SQLModel, table=True):
     __tablename__ = "idempotency_keys"

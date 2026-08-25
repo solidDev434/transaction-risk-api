@@ -1,5 +1,5 @@
 
-from fastapi import APIRouter, Query, Depends, Header
+from fastapi import APIRouter, Query, Depends, Header, HTTPException
 from sqlmodel.ext.asyncio.session import AsyncSession
 from typing import Optional
 from uuid import UUID
@@ -10,12 +10,13 @@ from app.users.model import User
 from app.auth.dependencies import get_current_user
 from app.common.pagination import PaginationParams, PaginatedResponse
 from .service import transaction_service
-from .model import TransactionStatus
+from .model import TransactionStatus, TransactionType
 from .schema import (
+    TransactionCreate,
     TransactionResponse,
     TransferTransaction,
     WithdrawalTransaction,
-    DebitTransaction
+    DepositTransaction,
 )
 
 router = APIRouter(prefix="/transactions", tags=["Transactions"])
@@ -60,18 +61,60 @@ async def flag_transaction(transaction_id: str, payload: dict):
     return {"message": "DONE"}
 
 
-@router.post("/transfer")
+@router.post("/transfer", status_code=202)
 async def transfer_transaction(
     payload: TransferTransaction,
-    idempotency_key: Annotated[str | None, Header()] = None,
+    idempotency_key: Annotated[str, Header(..., alias="Idempotency-Key")],
     session: AsyncSession = Depends(get_session),
     user: User = Depends(get_current_user)
 ):
-    # Idempotency check + lock
-    await transaction_service.initiate_transactions(session, idempotency_key, user.id)
+    data = TransactionCreate(
+        type=TransactionType.TRANSFER,
+        amount=payload.amount,
+        receiver_wallet_id=payload.receiver_wallet_id,
+    )
+    return await transaction_service.initiate_transaction(
+        session,
+        user.id,
+        data,
+        idempotency_key,
+    )
 
-    # Reserve funds (calls wallet_service.reserve funds)
-    # Create pending transaction
-    # Write to outbox
-    # Update recovery point
-    return {"Idempotency-Key": idempotency_key}
+
+@router.post("/withdraw", status_code=202)
+async def withdraw_transaction(
+    payload: WithdrawalTransaction,
+    idempotency_key: Annotated[str, Header(..., alias="Idempotency-Key")],
+    session: AsyncSession = Depends(get_session),
+    user: User = Depends(get_current_user)
+):
+    data = TransactionCreate(
+        type=TransactionType.WITHDRAWAL,
+        amount=payload.amount,
+    )
+    return await transaction_service.initiate_transaction(
+        session,
+        user.id,
+        data,
+        idempotency_key,
+    )
+
+
+@router.post("/deposit", status_code=202)
+async def deposit_transaction(
+    payload: DepositTransaction,
+    idempotency_key: Annotated[str, Header(..., alias="Idempotency-Key")],
+    session: AsyncSession = Depends(get_session),
+    user: User = Depends(get_current_user)
+):
+    data = TransactionCreate(
+        type=TransactionType.DEPOSIT,
+        amount=payload.amount,
+        receiver_wallet_id=payload.receiver_wallet_id,
+    )
+    return await transaction_service.initiate_transaction(
+        session,
+        user.id,
+        data,
+        idempotency_key,
+    )
