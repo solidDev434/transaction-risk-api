@@ -1,7 +1,16 @@
 import uuid
 from datetime import datetime
 from enum import Enum
-from sqlmodel import SQLModel, Field, JSON, Column, DateTime, func, Relationship
+from sqlmodel import (
+    SQLModel,
+    Field,
+    JSON,
+    Column,
+    DateTime,
+    func,
+    Relationship,
+    UniqueConstraint
+)
 from typing import Optional, TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -107,16 +116,19 @@ class TransactionOutbox(SQLModel, table=True):
 
 class IdempotencyKey(SQLModel, table=True):
     __tablename__ = "idempotency_keys"
+    __table_args__ = (
+        UniqueConstraint("user_id", "idempotency_key",
+                         name="uq_user_idempotency_key"),
+    )
 
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
     user_id: uuid.UUID = Field(
         index=True,
-        foreign_key="users.id",
-        unique=True
+        foreign_key="users.id"
     )
-    idempotency_key: str = Field(index=True, unique=True, max_length=100)
-    recovery_point: RecoveryPoint = Field(default=RecoveryPoint.STARTED)
+    idempotency_key: str = Field(index=True, max_length=100)
 
+    recovery_point: RecoveryPoint = Field(default=RecoveryPoint.STARTED)
     request_params: dict | None = Field(default=None, sa_column=Column(JSON))
     response_code: int | None = None
     response_body: dict | None = Field(default=None, sa_column=Column(JSON))

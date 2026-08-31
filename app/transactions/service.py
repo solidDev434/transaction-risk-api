@@ -72,17 +72,13 @@ class TransactionService:
         idempotency_key: str,
     ) -> dict:
         amount_cents = to_cent(payload.amount)
-
-        # Only start a transaction if one is not already active
-        if session.in_transaction():
-            return await TransactionService._do_initiate(
-                session, sender_user_id, payload, idempotency_key, amount_cents
-            )
-        else:
-            async with session.begin():
-                return await TransactionService._do_initiate(
-                    session, sender_user_id, payload, idempotency_key, amount_cents
-                )
+        return await TransactionService._do_initiate(
+            session,
+            sender_user_id,
+            payload,
+            idempotency_key,
+            amount_cents
+        )
 
     @staticmethod
     async def _do_initiate(
@@ -92,28 +88,26 @@ class TransactionService:
         idempotency_key: str,
         amount_cents: int,
     ) -> dict:
-        key = await transaction_repo.get_or_create_idempotency_key(
+        key, is_new = await transaction_repo.get_or_create_idempotency_key(
             session,
             user_id=sender_user_id,
-            idempotency_key=idempotency_key,
-            request_params=payload.model_dump(mode="json"),
+            key=idempotency_key,
+            request_params=payload.model_dump(mode="json")
         )
 
-        if key.recovery_point == RecoveryPoint.COMPLETED:
-            return {
-                "short_circuit": True,
-                "status_code": key.response_code or status.HTTP_200_OK,
-                "body": key.response_body or {},
-            }
+        if not is_new:
+            if key.recovery_point == RecoveryPoint.COMPLETED:
+                return {
+                    "short_circuit": True,
+                    "status_code": key.response_code or status.HTTP_200_OK,
+                    "body": key.response_body or {},
+                }
 
-        if key.locked_at and key.locked_at > datetime.utcnow() - timedelta(seconds=30):
-            raise HTTPException(
-                status_code=status.HTTP_409_CONFLICT,
-                detail="Request already in progress"
-            )
-
-        key.locked_at = datetime.utcnow()
-        session.add(key)
+            if key.locked_at and key.locked_at > datetime.utcnow() - timedelta(seconds=30):
+                raise HTTPException(
+                    status_code=status.HTTP_409_CONFLICT,
+                    detail="Request already in progress"
+                )
 
         sender_wallet = await wallet_service.get_wallet_by_user_id(session, sender_user_id)
 

@@ -69,10 +69,10 @@ class TransactionRepo:
         return result.scalar_one_or_none()
 
     @staticmethod
-    async def get_idempotency_key(session: AsyncSession, key: str, user_id: UUID) -> Optional[IdempotencyKey]:
+    async def get_idempotency_key(session: AsyncSession, idempotency_key: str, user_id: UUID) -> Optional[IdempotencyKey]:
         statement = select(IdempotencyKey).where(
             and_(
-                IdempotencyKey.idempotency_key == key,
+                IdempotencyKey.idempotency_key == idempotency_key,
                 IdempotencyKey.user_id == user_id
             )
         )
@@ -85,20 +85,24 @@ class TransactionRepo:
         user_id: UUID,
         idempotency_key: str,
         request_params: dict | None = None,
-    ) -> IdempotencyKey:
-        existing_key = await TransactionRepo.get_idempotency_key(session, idempotency_key, user_id)
+    ) -> Tuple[IdempotencyKey, bool]:
+        existing_key = await TransactionRepo.get_idempotency_key(
+            session,
+            idempotency_key=idempotency_key,
+            user_id=user_id
+        )
+
         if existing_key:
-            return existing_key
+            return existing_key, False
 
         key = IdempotencyKey(
             user_id=user_id,
             idempotency_key=idempotency_key,
-            request_params=request_params,
-            recovery_point=RecoveryPoint.STARTED,
+            request_params=request_params
         )
         session.add(key)
         await session.flush()
-        return key
+        return key, True
 
 
 transaction_repo = TransactionRepo()
