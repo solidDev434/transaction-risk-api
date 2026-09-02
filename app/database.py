@@ -7,11 +7,11 @@ from sqlalchemy.orm import sessionmaker
 
 from .config import config
 
-
+# Async Engine
 async_engine = AsyncEngine(
     create_engine(
-        url=config.DATABASE_URL,
-        echo=True
+        url=config.ASYNC_DATABASE_URL,
+        echo=False
     )
 )
 
@@ -35,3 +35,10 @@ async def get_session() -> AsyncGenerator[AsyncSession, None]:
         except Exception:
             await session.rollback()
             raise
+
+
+# Sync Engine
+sync_engine = create_engine(
+    url=config.SYNC_DATABASE_URL,
+    echo=False
+)

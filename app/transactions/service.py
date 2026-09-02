@@ -91,7 +91,7 @@ class TransactionService:
         key, is_new = await transaction_repo.get_or_create_idempotency_key(
             session,
             user_id=sender_user_id,
-            key=idempotency_key,
+            idempotency_key=idempotency_key,
             request_params=payload.model_dump(mode="json")
         )
 
@@ -154,6 +154,8 @@ class TransactionService:
                 "amount": amount_cents,
                 "sender_wallet_id": str(sender_wallet.id) if payload.type != TransactionType.DEPOSIT else None,
                 "receiver_wallet_id": str(payload.receiver_wallet_id) if payload.receiver_wallet_id else None,
+                "idempotency_key": idempotency_key,
+                "user_id": str(sender_user_id),
             },
             status="pending",
             attempts=0,

@@ -2,7 +2,8 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Config(BaseSettings):
-    DATABASE_URL: str
+    ASYNC_DATABASE_URL: str
+    SYNC_DATABASE_URL: str
     VERSION: str = "v1"
     REDIS_URL: str = "redis://localhost:6379/0"
 
