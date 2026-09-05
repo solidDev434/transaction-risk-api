@@ -14,6 +14,15 @@ async_engine = AsyncEngine(
         echo=False
     )
 )
+async_session = sessionmaker(
+    async_engine,
+    class_=AsyncSession,
+    expire_on_commit=False
+)
+
+sync_engine = create_engine(config.SYNC_DATABASE_URL)
+SyncSessionLocal = sessionmaker(
+    bind=sync_engine, autoflush=False, autocommit=False)
 
 
 async def init_db():
@@ -22,12 +31,6 @@ async def init_db():
 
 
 async def get_session() -> AsyncGenerator[AsyncSession, None]:
-    async_session = sessionmaker(
-        async_engine,
-        class_=AsyncSession,
-        expire_on_commit=False
-    )
-
     async with async_session() as session:
         try:
             yield session
@@ -35,10 +38,3 @@ async def get_session() -> AsyncGenerator[AsyncSession, None]:
         except Exception:
             await session.rollback()
             raise
-
-
-# Sync Engine
-sync_engine = create_engine(
-    url=config.SYNC_DATABASE_URL,
-    echo=False
-)

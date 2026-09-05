@@ -1,7 +1,4 @@
 from celery import Celery
-from celery.schedules import crontab
-from random import choices
-import time
 
 
 from app.config import config
