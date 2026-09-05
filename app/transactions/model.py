@@ -97,6 +97,8 @@ class TransactionOutbox(SQLModel, table=True):
     payload: dict | None = Field(default=None, sa_column=Column(JSON))
     status: str = Field(default="pending", max_length=50)
     attempts: int = Field(default=0, ge=0)
+
+    next_retry_at: datetime | None = None
     created_at: datetime = Field(
         sa_column=Column(
             DateTime(timezone=True),
