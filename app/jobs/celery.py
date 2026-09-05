@@ -15,13 +15,14 @@ celery_app.conf.update(
     result_serializer="json",
     timezone="UTC",
     enable_utc=True,
-    # task_acks_late=True,
+    task_acks_late=True,
     # worker_prefetch_multiplier=1,
     # task_reject_on_worker_lost=True,
     beat_schedule={
         "drain-outbox-every-30-seconds": {
             "task": "drain_transaction_outbox",
             "schedule": 30.0,
+            "options": {"expires": 25.0}
         },
     },
 )
