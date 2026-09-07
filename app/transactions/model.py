@@ -21,8 +21,8 @@ if TYPE_CHECKING:
 class TransactionStatus(str, Enum):
     PENDING = "pending"
     FLAGGED = "flagged"
-    CLEARED = "CLEARED"
-    REJECTED = "REJECTED"
+    CLEARED = "cleared"
+    REJECTED = "rejected"
 
 
 class TransactionType(str, Enum):

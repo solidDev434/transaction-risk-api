@@ -10,7 +10,7 @@ from alembic import context
 
 from app.users.model import User
 from app.wallet.model import Wallet
-from app.transactions.model import Transaction
+from app.transactions.model import Transaction, TransactionOutbox, IdempotencyKey
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.

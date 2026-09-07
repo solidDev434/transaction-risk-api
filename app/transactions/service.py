@@ -7,6 +7,7 @@ from math import ceil
 from app.wallet.repo import wallet_repo
 from app.wallet.service import wallet_service
 from app.wallet.utils import to_cent
+from .utils import to_transaction_response
 from .repo import transaction_repo
 from .model import TransactionStatus, Transaction, TransactionType, RecoveryPoint, TransactionOutbox
 from .schema import TransactionCreate, TransactionResponse
@@ -28,8 +29,12 @@ class TransactionService:
             status
         )
 
+        user_wallet = await wallet_repo.get_wallet_by_user_id(session, user_id)
+        user_wallet_id = user_wallet.id if user_wallet else None
+
         response_items = [
-            TransactionResponse.model_validate(item) for item in items
+            to_transaction_response(item, user_wallet_id=user_wallet_id)
+            for item in items
         ]
 
         pages = ceil(total / pagination.limit) if pagination.limit else 0

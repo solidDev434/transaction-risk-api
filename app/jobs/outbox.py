@@ -55,7 +55,7 @@ def claim_pending_outbox_rows(
         select(TransactionOutbox)
         .where(TransactionOutbox.status == "pending")
         .where(
-            (Transaction.next_retry_at.is_(None))
+            (TransactionOutbox.next_retry_at.is_(None))
             | (TransactionOutbox.next_retry_at <= datetime.utcnow())
         )
         .order_by(TransactionOutbox.created_at)

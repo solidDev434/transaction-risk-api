@@ -10,8 +10,9 @@ class TransactionResponse(BaseModel):
     id: UUID
     amount: int
     status: TransactionStatus
+    type: TransactionType
+    wallet_id: UUID | None = None
     created_at: datetime
-    updated_at: datetime
 
     class Config:
         from_attributes = True
