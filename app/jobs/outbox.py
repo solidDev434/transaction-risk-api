@@ -1,4 +1,5 @@
 import random
+import logging
 from sqlmodel import select
 from fastapi import status
 from uuid import UUID
@@ -21,11 +22,13 @@ from app.transactions.model import (
     RecoveryPoint
 )
 
+logger = logging.getLogger(__name__)
+
 MAX_ATTEMPTS = config.MAX_ATTEMPTS
 
 
 def compute_backoff_seconds(attempts: int, base: float = 2.0, cap: float = 300.0) -> float:
-    """Exponential backoff, full jitter — see Lesson: thundering herd."""
+    """Exponential backoff, full jitter"""
     exp_delay = min(cap, base * (2 ** max(attempts - 1, 0)))
     return random.uniform(0, exp_delay)
 
@@ -37,20 +40,21 @@ def drain_transaction_outbox():
         with Session() as session:
             outbox_ids = claim_pending_outbox_rows(session, limit=10)
     except Exception as exc:
-        print(f"Failed to claim outbox rows: {exc}")
+        logger.error(f"Failed to claim outbox rows: {exc}")
 
     # Process Outbox row independently
     for outbox_id in outbox_ids:
         try:
             process_outbox_row(outbox_id)
         except Exception as exc:
-            print(f"Row {outbox_id} raised during processing: {exc}")
+            logger.error(f"Row {outbox_id} raised during processing: {exc}")
 
 
 def claim_pending_outbox_rows(
     session: SyncSession,
     limit: int = 10
 ) -> List[str]:
+    logger.info("Claiming pending Outbox Rows")
     statement = (
         select(TransactionOutbox)
         .where(TransactionOutbox.status == "pending")
@@ -65,7 +69,8 @@ def claim_pending_outbox_rows(
     result = session.execute(statement)
     rows = list(result.scalars().all())
 
-    # Mark outbox rows as  processing and increment attempts
+    # Mark outbox rows as processing and increment attempts
+    logger.info("Mark all pending Outbox Rows as processing")
     ids = []
     for row in rows:
         row.status = "processing"
@@ -83,48 +88,49 @@ def process_outbox_row(outbox_id: str):
     result to exactly one of settle_success / settle_failure / settle_retry.
     No ORM object survives past this function — only plain IDs are passed on.
     """
+    logger.info(
+        "Processing Outbox Rows. Return/Stop if rows is already processed or failed")
     with Session() as session:
-        with Session() as session:
-            row = session.get(
-                TransactionOutbox,
-                UUID(outbox_id),
-                with_for_update=True
-            )
-            if not row or row.status in ("processed", "failed"):
-                return
+        row = session.get(
+            TransactionOutbox,
+            UUID(outbox_id),
+            with_for_update=True
+        )
+        if not row or row.status in ("processed", "failed"):
+            return
 
-            payload = row.payload or {}
-            attempts = row.attempts or 0
+        payload = row.payload or {}
+        attempts = row.attempts or 0
 
-        try:
-            # Call payment provider
-            provider_result = process_payment(payload)
-            settle_success(
-                outbox_id=outbox_id,
-                payload=payload,
-                provider_result=provider_result
-            )
+    try:
+        # Call payment provider
+        provider_result = process_payment(payload)
+        settle_success(
+            outbox_id=outbox_id,
+            payload=payload,
+            provider_result=provider_result
+        )
 
-        except PaymentFailedError as exc:
-            settle_failure(
-                outbox_id=outbox_id,
-                payload=payload,
-                provider_result={"error": str(exc)}
-            )
+    except PaymentFailedError as exc:
+        settle_failure(
+            outbox_id=outbox_id,
+            payload=payload,
+            provider_result={"error": str(exc)}
+        )
 
-        except PaymentTimeoutError as exc:
-            settle_retry(
-                outbox_id=outbox_id,
-                error={"error": str(exc)},
-                attempts=attempts
-            )
+    except PaymentTimeoutError as exc:
+        settle_retry(
+            outbox_id=outbox_id,
+            error={"error": str(exc)},
+            attempts=attempts
+        )
 
-        except Exception as exc:
-            settle_retry(
-                outbox_id=outbox_id,
-                error={"error": f"unexpected: {exc}"},
-                attempts=attempts
-            )
+    except Exception as exc:
+        settle_retry(
+            outbox_id=outbox_id,
+            error={"error": f"unexpected: {exc}"},
+            attempts=attempts
+        )
 
 
 def settle_success(
