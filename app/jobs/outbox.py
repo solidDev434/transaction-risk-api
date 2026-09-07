@@ -169,18 +169,20 @@ def settle_success(
 
             transaction = get_transaction_for_update(session, txn_id)
 
+            # TRANSACTION_TYPE: Transfer | Wallet
+            # Debits/Removes from sender reserved funds
             if transaction_type in ("transfer", "withdrawal"):
                 if sender_wallet_id:
-                    print(f"DEBITTING from {sender_wallet_id}")
                     capture_funds(
                         session,
                         sender_wallet_id,
                         amount
                     )
 
+            # TRANSACTION_TYPE: Transfer | Debit
+            # Credits funds to receiver
             if transaction_type in ("transfer", "deposit"):
                 if receiver_wallet_id:
-                    print(f"CREDITTING {receiver_wallet_id}")
                     credit_wallet(
                         session,
                         receiver_wallet_id,
@@ -238,7 +240,6 @@ def settle_failure(
             transaction = get_transaction_for_update(session, txn_id)
 
             if transaction_type in ("transfer", "withdrawal") and sender_wallet_id:
-                print(f"RELEASE RESERVERS FUNDS from {sender_wallet_id}")
                 release_funds(
                     session,
                     sender_wallet_id,
@@ -320,6 +321,7 @@ def capture_funds(
     wallet_id: str,
     amount: int
 ):
+    logger.info(f"DEBITTING FROM {wallet_id}")
     wallet = get_wallet_for_update(session, wallet_id)
     if wallet.reserved < amount:
         raise Exception("Insufficient reserved funds to capture")
@@ -333,6 +335,7 @@ def release_funds(
     wallet_id: str,
     amount: int
 ):
+    logger.info(f"RELEASE {wallet_id} RESERVERD FUNDS")
     wallet = get_wallet_for_update(session, wallet_id)
     if wallet.reserved < amount:
         raise Exception("Insufficient reserved funds to release")
@@ -343,6 +346,7 @@ def release_funds(
 
 
 def credit_wallet(session, wallet_id: str, amount: int):
+    logger.info(f"CREDITTING {wallet_id}")
     wallet = get_wallet_for_update(session, wallet_id)
     wallet.available += amount
     session.add(wallet)

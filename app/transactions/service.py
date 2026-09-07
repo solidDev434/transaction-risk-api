@@ -126,9 +126,11 @@ class TransactionService:
                 raise HTTPException(
                     status_code=404, detail="Receiver wallet not found")
 
+            # Reserve Sender Funds
             await wallet_service.reserve_funds(session, sender_user_id, amount_cents)
 
         elif payload.type == TransactionType.WITHDRAWAL:
+            # Reserve Sender Funds
             await wallet_service.reserve_funds(session, sender_user_id, amount_cents)
 
         elif payload.type == TransactionType.DEPOSIT:
