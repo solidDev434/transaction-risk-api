@@ -110,8 +110,14 @@ class TransactionService:
 
             if key.locked_at and key.locked_at > datetime.utcnow() - timedelta(seconds=30):
                 raise HTTPException(
-                    status_code=status.HTTP_409_CONFLICT,
+                    status_code=status.HTTP_400_BAD_REQUEST,
                     detail="Request already in progress"
+                )
+
+            if (str(key.request_params) != str(payload)):
+                raise HTTPException(
+                    detail="Idempotency key reused with different params",
+                    status_code=status.HTTP_409_CONFLICT
                 )
 
         sender_wallet = await wallet_service.get_wallet_by_user_id(session, sender_user_id)
