@@ -1,0 +1,8 @@
+venv
+.venv
+.git
+.env
+.env.*
+celerybeat-schedule
+Dockerfile
+.vscode
