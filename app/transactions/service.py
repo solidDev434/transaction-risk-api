@@ -114,7 +114,8 @@ class TransactionService:
                     detail="Request already in progress"
                 )
 
-            if (str(key.request_params) != str(payload)):
+            current_params = payload.model_dump(mode="json")
+            if (key.request_params != current_params):
                 raise HTTPException(
                     detail="Idempotency key reused with different params",
                     status_code=status.HTTP_409_CONFLICT
