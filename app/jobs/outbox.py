@@ -57,8 +57,10 @@ def claim_pending_outbox_rows(
     logger.info("Claiming pending Outbox Rows")
     statement = (
         select(TransactionOutbox)
-        .where(TransactionOutbox.status == "pending")
+        .join(Transaction, Transaction.id == TransactionOutbox.payload.get("transaction_id"))
         .where(
+            TransactionOutbox.status == "pending",
+            Transaction.status == TransactionStatus.PENDING,
             (TransactionOutbox.next_retry_at.is_(None))
             | (TransactionOutbox.next_retry_at <= datetime.utcnow())
         )
