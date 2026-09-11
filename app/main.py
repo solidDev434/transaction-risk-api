@@ -9,6 +9,7 @@ from app.cache.redis_client import redis_client
 from .auth.router import router as auth_router
 from .users.router import router as user_router
 from .wallet.router import router as wallet_router
+from .transactions.router import router as transactions_router
 
 
 @asynccontextmanager
@@ -38,3 +39,4 @@ async def read_health():
 app.include_router(auth_router, prefix=f"/api/{config.VERSION}")
 app.include_router(user_router, prefix=f"/api/{config.VERSION}")
 app.include_router(wallet_router, prefix=f"/api/{config.VERSION}")
+app.include_router(transactions_router, prefix=f"/api/{config.VERSION}")

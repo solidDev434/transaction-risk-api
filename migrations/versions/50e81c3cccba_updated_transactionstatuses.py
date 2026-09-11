@@ -1,8 +1,8 @@
-"""Fixed relationship referencing between wallet and users models
+"""Updated TransactionStatuses 
 
-Revision ID: f70ee552a67e
-Revises: d21d8fffb5ee
-Create Date: 2026-08-21 15:41:22.168010
+Revision ID: 50e81c3cccba
+Revises: 2efea3d589f1
+Create Date: 2026-09-07 11:29:34.308811
 
 """
 from typing import Sequence, Union
@@ -13,8 +13,8 @@ import sqlmodel
 
 
 # revision identifiers, used by Alembic.
-revision: str = 'f70ee552a67e'
-down_revision: Union[str, Sequence[str], None] = 'd21d8fffb5ee'
+revision: str = '50e81c3cccba'
+down_revision: Union[str, Sequence[str], None] = '2efea3d589f1'
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 

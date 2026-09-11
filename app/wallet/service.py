@@ -23,6 +23,10 @@ class WalletService:
 
     @staticmethod
     async def create_wallet(session: AsyncSession, user_id: UUID) -> Wallet:
+        """
+            Create wallet for user (one wallet per user).
+            Checks and throws an error if user already has a wallet, else creates new wallet        
+        """
         existing_wallet = await wallet_repo.get_wallet_by_user_id(session, user_id)
         if existing_wallet:
             raise HTTPException(
@@ -31,15 +35,19 @@ class WalletService:
             )
 
         wallet = Wallet(user_id=user_id, available=to_cent(1000), reserved=0)
+
         session.add(wallet)
+        await session.commit()
+        await session.refresh(wallet)
+        return wallet
 
     @staticmethod
     async def reserve_funds(session: AsyncSession, user_id: UUID, amount: int) -> Wallet:
         """
         Reserve funds (move from available -> reserved)
-        amound should be in cents
+        amound should be in cents without committing
         """
-        wallet = await wallet_repo.get_wallet_by_user_id(session, user_id)
+        wallet = await wallet_repo.get_wallet_by_user_id_for_update(session, user_id)
 
         if wallet.available < amount:
             raise HTTPException(
@@ -49,14 +57,15 @@ class WalletService:
 
         wallet.available -= amount
         wallet.reserved += amount
+        wallet_repo.stage(session, wallet)
         return wallet
 
     @staticmethod
     async def release_funds(session: AsyncSession, user_id: UUID, amount: int) -> Wallet:
         """
-        Release previously reserved funds (move from reserved -> available)
+        Release previously reserved funds (move from reserved -> available) without committing
         """
-        wallet = await wallet_repo.get_wallet_by_user_id(session, user_id)
+        wallet = await wallet_repo.get_wallet_by_user_id_for_update(session, user_id)
 
         if wallet.reserved < amount:
             raise HTTPException(
@@ -66,15 +75,16 @@ class WalletService:
 
         wallet.reserved -= amount
         wallet.available += amount
+        wallet_repo.stage(session, wallet)
         return wallet
 
     @staticmethod
     async def capture_funds(session: AsyncSession, user_id: UUID, amount: int) -> Wallet:
         """
         Finalize a successful transaction.
-        Only reduce the reserved balance (money is now taken).
+        Only reduce the reserved balance (money is now taken) without committing
         """
-        wallet = await wallet_repo.get_wallet_by_user_id(session, user_id)
+        wallet = await wallet_repo.get_wallet_by_user_id_for_update(session, user_id)
 
         if wallet.reserved < amount:
             raise HTTPException(
@@ -83,6 +93,7 @@ class WalletService:
             )
 
         wallet.reserved -= amount
+        wallet_repo.stage(session, wallet)
         return wallet
 
 

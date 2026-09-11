@@ -33,9 +33,7 @@ __pycache__/
 build/
 dist/
 *.egg-info/
-bot_session.session-journal
-anon.session
-bot_session.session
+celerybeat-schedule
 
 # Testing
 .pytest_cache/

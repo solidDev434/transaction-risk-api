@@ -7,13 +7,22 @@ from sqlalchemy.orm import sessionmaker
 
 from .config import config
 
-
+# Async Engine
 async_engine = AsyncEngine(
     create_engine(
-        url=config.DATABASE_URL,
-        echo=True
+        url=config.ASYNC_DATABASE_URL,
+        echo=False
     )
 )
+async_session = sessionmaker(
+    async_engine,
+    class_=AsyncSession,
+    expire_on_commit=False
+)
+
+sync_engine = create_engine(config.SYNC_DATABASE_URL)
+SyncSessionLocal = sessionmaker(
+    bind=sync_engine, autoflush=False, autocommit=False)
 
 
 async def init_db():
@@ -22,11 +31,10 @@ async def init_db():
 
 
 async def get_session() -> AsyncGenerator[AsyncSession, None]:
-    async_session = sessionmaker(
-        async_engine,
-        class_=AsyncSession,
-        expire_on_commit=False
-    )
-
     async with async_session() as session:
-        yield session
+        try:
+            yield session
+            await session.commit()
+        except Exception:
+            await session.rollback()
+            raise
