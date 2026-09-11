@@ -5,7 +5,7 @@ class Config(BaseSettings):
     ASYNC_DATABASE_URL: str
     SYNC_DATABASE_URL: str
     VERSION: str = "v1"
-    REDIS_URL: str = "redis://localhost:6379/0"
+    REDIS_URL: str
     MAX_ATTEMPTS: int
 
     model_config = SettingsConfigDict(
