@@ -1,0 +1,120 @@
+
+from fastapi import APIRouter, Query, Depends, Header, HTTPException
+from sqlmodel.ext.asyncio.session import AsyncSession
+from typing import Optional
+from uuid import UUID
+from typing import Annotated
+
+from app.database import get_session
+from app.users.model import User
+from app.auth.dependencies import get_current_user
+from app.common.pagination import PaginationParams, PaginatedResponse
+from .service import transaction_service
+from .model import TransactionStatus, TransactionType
+from .schema import (
+    TransactionCreate,
+    TransactionResponse,
+    TransferTransaction,
+    WithdrawalTransaction,
+    DepositTransaction,
+)
+
+router = APIRouter(prefix="/transactions", tags=["Transactions"])
+
+
+@router.get("/", response_model=PaginatedResponse)
+async def get_transactions(
+    page: int = Query(1, ge=1),
+    limit: int = Query(20, ge=1, le=100),
+    status: Optional[TransactionStatus] = Query(
+        None, description="Filter by transaction status"),
+    session: AsyncSession = Depends(get_session),
+    user: User = Depends(get_current_user)
+):
+    pagination = PaginationParams(page=page, limit=limit)
+
+    return await transaction_service.get_user_transactions(
+        session=session,
+        user_id=user.id,
+        pagination=pagination,
+        status=status
+    )
+
+
+@router.get("/{transaction_id}", response_model=TransactionResponse)
+async def get_transaction(
+    transaction_id: UUID,
+    session: AsyncSession = Depends(get_session),
+    user: User = Depends(get_current_user)
+):
+    transaction = await transaction_service.get_user_transaction_by_id(
+        session,
+        user.id,
+        transaction_id
+    )
+    return transaction
+
+
+@router.post("/{transaction_id}/flag")
+async def flag_transaction(transaction_id: str, payload: dict):
+    print(f"FLAGGING TRANSACTION {transaction_id}")
+    return {"message": "DONE"}
+
+
+@router.post("/transfer", status_code=202)
+async def transfer_transaction(
+    payload: TransferTransaction,
+    idempotency_key: Annotated[str, Header(..., alias="Idempotency-Key")],
+    session: AsyncSession = Depends(get_session),
+    user: User = Depends(get_current_user)
+):
+    data = TransactionCreate(
+        type=TransactionType.TRANSFER,
+        amount=payload.amount,
+        receiver_wallet_id=payload.receiver_wallet_id,
+    )
+    return await transaction_service.initiate_transaction(
+        session,
+        user.id,
+        data,
+        idempotency_key,
+    )
+
+
+@router.post("/withdraw", status_code=202)
+async def withdraw_transaction(
+    payload: WithdrawalTransaction,
+    idempotency_key: Annotated[str, Header(..., alias="Idempotency-Key")],
+    session: AsyncSession = Depends(get_session),
+    user: User = Depends(get_current_user)
+):
+    data = TransactionCreate(
+        type=TransactionType.WITHDRAWAL,
+        amount=payload.amount,
+    )
+    return await transaction_service.initiate_transaction(
+        session,
+        user.id,
+        data,
+        idempotency_key,
+    )
+
+
+@router.post("/deposit", status_code=202)
+async def deposit_transaction(
+    payload: DepositTransaction,
+    idempotency_key: Annotated[str, Header(..., alias="Idempotency-Key")],
+    session: AsyncSession = Depends(get_session),
+    user: User = Depends(get_current_user)
+):
+    data = TransactionCreate(
+        type=TransactionType.DEPOSIT,
+        amount=payload.amount,
+        receiver_wallet_id=payload.receiver_wallet_id,
+    )
+    return await transaction_service.initiate_transaction(
+        session,
+        user.id,
+        data,
+        idempotency_key,
+    )
