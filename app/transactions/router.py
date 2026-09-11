@@ -17,6 +17,7 @@ from .schema import (
     TransferTransaction,
     WithdrawalTransaction,
     DepositTransaction,
+    FlagTransaction
 )
 
 router = APIRouter(prefix="/transactions", tags=["Transactions"])
@@ -56,9 +57,12 @@ async def get_transaction(
 
 
 @router.post("/{transaction_id}/flag")
-async def flag_transaction(transaction_id: str, payload: dict):
-    print(f"FLAGGING TRANSACTION {transaction_id}")
-    return {"message": "DONE"}
+async def flag_transaction(
+    transaction_id: str,
+    payload: FlagTransaction,
+    session: AsyncSession = Depends(get_session),
+):
+    return await transaction_service.flag_transaction(session, transaction_id, payload)
 
 
 @router.post("/transfer", status_code=202)

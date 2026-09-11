@@ -1,0 +1,60 @@
+name: risk_transaction_api
+
+services:
+  api:
+    build: .
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env.prod
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    restart: unless-stopped
+
+  celery_worker:
+    build: .
+    command: celery -A app.jobs.outbox worker --loglevel=info
+    env_file:
+      - .env.prod
+    depends_on:
+      - redis
+      - postgres
+    restart: unless-stopped
+
+  celery_beat:
+    build: .
+    command: celery -A app.jobs.outbox beat --loglevel=info
+    env_file:
+      - .env.prod
+    depends_on:
+      - redis
+      - postgres
+    restart: unless-stopped
+
+  postgres:
+    image: postgres:18
+    env_file:
+      - .env.prod
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+    restart: unless-stopped
+
+  redis:
+    image: redis:latest
+    ports:
+      - "6380:6379"
+    restart: unless-stopped
+
+volumes:
+  postgres_data:

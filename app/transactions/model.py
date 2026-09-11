@@ -86,6 +86,8 @@ class Transaction(SQLModel, table=True):
         sa_relationship_kwargs={
             "foreign_keys": "[Transaction.receiver_wallet_id]"}
     )
+    transaction_events: Optional["TransactionEvent"] = Relationship(
+        back_populates="transaction")
 
 
 class TransactionOutbox(SQLModel, table=True):
@@ -145,3 +147,37 @@ class IdempotencyKey(SQLModel, table=True):
     )
 
     user: Optional["User"] = Relationship(back_populates="idempotency_keys")
+
+
+class TransactionEvent(SQLModel, table=True):
+    __tablename__ = "transaction_events"
+
+    id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
+    transaction_id: uuid.UUID = Field(
+        index=True,
+        foreign_key="transactions.id"
+    )
+
+    from_status: TransactionStatus
+    to_status: TransactionStatus
+    reason: str | None = Field(default=None)
+    actor: str
+
+    created_at: datetime = Field(
+        sa_column=Column(
+            DateTime(timezone=True),
+            server_default=func.now(),
+            nullable=True
+        )
+    )
+    updated_at: datetime = Field(
+        sa_column=Column(
+            DateTime(timezone=True),
+            server_default=func.now(),
+            onupdate=func.now(),
+            nullable=True
+        )
+    )
+
+    transaction: Optional["Transaction"] = Relationship(
+        back_populates="transaction_events")
