@@ -7,10 +7,17 @@ from math import ceil
 from app.wallet.repo import wallet_repo
 from app.wallet.service import wallet_service
 from app.wallet.utils import to_cent
-from .utils import to_transaction_response
+from .utils import to_transaction_response, is_status_transition_allowed
 from .repo import transaction_repo
-from .model import TransactionStatus, Transaction, TransactionType, RecoveryPoint, TransactionOutbox
-from .schema import TransactionCreate, TransactionResponse
+from .model import (
+    TransactionStatus,
+    Transaction,
+    TransactionType,
+    RecoveryPoint,
+    TransactionOutbox,
+    TransactionEvent
+)
+from .schema import TransactionCreate, FlagTransaction
 from app.common.pagination import PaginatedResponse, PaginationParams
 
 
@@ -63,10 +70,46 @@ class TransactionService:
 
         if not transaction:
             raise HTTPException(
-                status=status.HTTP_404_NOT_FOUND,
+                status_code=status.HTTP_404_NOT_FOUND,
                 detail="Transaction not found"
             )
 
+        return transaction
+
+    @staticmethod
+    async def flag_transaction(session: AsyncSession, transaction_id: str, payload: FlagTransaction):
+        # Get transaction
+        transaction = await transaction_repo.get_transaction_by_id(session, UUID(transaction_id))
+        if not transaction:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Transaction not found"
+            )
+
+        # Check if status transition is allowed
+        new_status = is_status_transition_allowed(
+            payload.new_status, transaction.status)
+
+        if new_status is None:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"Cannot move transaction from '{transaction.status.value}' to '{payload.new_status.value}'"
+            )
+
+        # Create transaction event
+        new_event = TransactionEvent(
+            transaction_id=transaction.id,
+            from_status=transaction.status,
+            to_status=new_status,
+            reason=payload.reason,
+            actor="stytem"
+        )
+        session.add(new_event)
+
+        # Update and commit transaction status
+        transaction.status = new_status
+        session.add(transaction)
+        session.commit()
         return transaction
 
     @staticmethod
@@ -114,7 +157,8 @@ class TransactionService:
                     detail="Request already in progress"
                 )
 
-            if (str(key.request_params) != str(payload)):
+            current_params = payload.model_dump(mode="json")
+            if (key.request_params != current_params):
                 raise HTTPException(
                     detail="Idempotency key reused with different params",
                     status_code=status.HTTP_409_CONFLICT
@@ -154,7 +198,7 @@ class TransactionService:
             receiver_wallet_id=payload.receiver_wallet_id,
             amount=amount_cents,
             type=payload.type,
-            status=TransactionStatus.PENDING,
+            status_code=TransactionStatus.PENDING,
         )
         session.add(transaction)
         await session.flush()
@@ -170,7 +214,7 @@ class TransactionService:
                 "idempotency_key": idempotency_key,
                 "user_id": str(sender_user_id),
             },
-            status="pending",
+            status_code="pending",
             attempts=0,
         )
         session.add(outbox)
