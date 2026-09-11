@@ -24,6 +24,11 @@ class TransactionCreate(BaseModel):
     receiver_wallet_id: UUID | None = None
 
 
+class FlagTransaction(BaseModel):
+    new_status: TransactionStatus
+    reason: str
+
+
 class TransferTransaction(BaseModel):
     receiver_wallet_id: UUID
     amount: float = Field(..., gt=0)

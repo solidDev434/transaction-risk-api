@@ -1,7 +1,8 @@
 from uuid import UUID
 
-from .model import Transaction
+from .model import Transaction, TransactionStatus
 from .schema import TransactionResponse
+from .constants import VALID_TRANSITIONS
 
 
 def to_transaction_response(
@@ -33,3 +34,11 @@ def to_transaction_response(
         wallet_id=wallet_id,
         created_at=tx.created_at
     )
+
+
+def is_status_transition_allowed(new_status: TransactionStatus, current_status: TransactionStatus) -> str | None:
+    allowed = VALID_TRANSITIONS[current_status.value]
+    if new_status not in allowed:
+        return None
+
+    return new_status.value
